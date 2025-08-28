@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  role            String   @default("client") // "client" o "artist"
+  stripeAccountId String?
+  createdAt       DateTime @default(now())
+  artworks        Artwork[] // Relación con obras
+  orders          Order[]   // Relación con órdenes (como comprador)
+}
+
+model Artwork {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  price       Float
+  images      String[] // Array de URLs de Supabase Storage
+  dimensions  Json     // {width: Float, height: Float, unit: String}
+  weight      Float
+  artistId    String
+  artist      User     @relation(fields: [artistId], references: [id])
+  orders      Order[]  // Relación con órdenes
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  buyerId       String
+  artworkId     String
+  stripePaymentId String
+  shippingStatus String    @default("pending")
+  createdAt     DateTime  @default(now())
+  buyer         User      @relation(fields: [buyerId], references: [id])
+  artwork       Artwork   @relation(fields: [artworkId], references: [id])
+  certificate   Certificate? // Relación opcional
+  shipment      Shipment?    // Relación opcional
+}
+
+model Certificate {
+  id        String   @id @default(uuid())
+  orderId   String   @unique // Uno por orden
+  pdfUrl    String   // URL en Supabase Storage
+  metadata  Json     // {artworkTitle: String, artistName: String, buyerName: String, date: DateTime}
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+model Shipment {
+  id            String   @id @default(uuid())
+  orderId       String   @unique // Uno por orden
+  trackingNumber String
+  labelUrl      String   // URL en Supabase Storage
+  createdAt     DateTime @default(now())
+  order         Order    @relation(fields: [orderId], references: [id])
+}
